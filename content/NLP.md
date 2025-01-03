@@ -1,5 +1,5 @@
 ---
-title: A Comprehensive Guide to Text Classification and Language Modeling in NLP
+title: "NLP: Text Classification and Language Modelling"
 aliases:
 ---
 # NLP: Text Classification and Language Modelling
