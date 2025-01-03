@@ -86,15 +86,16 @@ $$\theta \leftarrow \theta - \alpha \frac{\partial \mathcal{L}_{train}(\theta)}{
 
 For binary classification, the score for a class yy given input XX is:
 
-sy∣X=θy+∑i=1∣X∣θy∣xis_{y|X} = \theta_{y} + \sum_{i=1}^{|X|} \theta_{y|x_i}
+$$s_{y|X} = \theta_{y} + \sum_{i=1}^{|X|} \theta_{y|x_i}$$
 
 This score is converted to a probability using the sigmoid function:
 
-P(y∣X;θ)=11+e−sy∣XP(y|X; \theta) = \frac{1}{1 + e^{-s_{y|X}}}
+$$ P(y|X; \theta) = \frac{1}{1 + e^{-s_{y|X}}}$$
+
 
 For multi-class classification, softmax is used instead of sigmoid:
 
-P(y∣X;θ)=esy∣X∑y^esy^∣XP(y|X; \theta) = \frac{e^{s_{y|X}}}{\sum_{\hat{y}} e^{s_{\hat{y}|X}}}
+$$P(y|X; \theta) = \frac{e^{s_{y|X}}}{\sum_{\hat{y}} e^{s_{\hat{y}|X}}}$$
 
 ### Evaluation Metrics
 
