@@ -312,4 +312,4 @@ This guide has covered essential aspects of text classification and language mod
 
 # Tags
 
-#NLP #ArtificialIntelligence #Transformers
+#NLP #AI #Transformers
