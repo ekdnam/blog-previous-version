@@ -196,7 +196,7 @@ Pruning LLMs presents unique challenges due to their scale and the sensitivity o
 
 **Lottery Ticket Hypothesis**
 
-The Lottery Ticket Hypothesis (Frankle & Carbin, 2018 [unreferenced, but important]) posits that within a randomly initialized dense network, there exists a sparse subnetwork ("winning ticket") that can be trained in isolation to achieve comparable or even better performance than the original dense network. This suggests that sparsity is not just about compression but might be fundamental to efficient learning itself. Exploring lottery tickets and related sparse initialization strategies is a promising research direction.
+The Lottery Ticket Hypothesis (Frankle & Carbin, 2018<sup>12</sup>) posits that within a randomly initialized dense network, there exists a sparse subnetwork ("winning ticket") that can be trained in isolation to achieve comparable or even better performance than the original dense network. This suggests that sparsity is not just about compression but might be fundamental to efficient learning itself. Exploring lottery tickets and related sparse initialization strategies is a promising research direction.
 
 **Evaluation Metrics Beyond Accuracy**
 
@@ -212,7 +212,12 @@ Pruning and sparsity offer a critical pathway to reconcile the insatiable demand
 
 # Acknowledgements
 
-This exploration of AI efficiency, with a focus on pruning and sparsity, is heavily indebted to Dr. Song Han's course on TinyML and Efficient Deep Learning Computing. The references cited and the broader field of efficient deep learning are built upon the work of numerous researchers and engineers.
+This blog series on AI efficiency is heavily indebted to Dr. Song Han's course on TinyML and Efficient Deep Learning Computing. The references cited and the broader field of efficient deep learning are built upon the work of numerous researchers and engineers.
+
+I would like to extend my sincere gratitude to my colleagues for their invaluable insights and assistance throughout this research: Grok-2.0 [(xAI)](https://x.ai/blog/grok-2),
+Gemini-2.0-Flash-Thinking-Exp-01-21 [(DeepMind)](https://deepmind.google/technologies/gemini/flash-thinking/), O1 [(OpenAI)](https://openai.com/o1/).
+
+Their contributions have been pivotal to the success of this project, and I am deeply thankful for their collaboration.
 
 # References
  
@@ -227,6 +232,7 @@ This exploration of AI efficiency, with a focus on pruning and sparsity, is heav
 9. Branwen, G. (2020). The Scaling Hypothesis. https://gwern.net/scaling-hypothesis
 10. LeCun, Y., Denker, J., & Solla, S. (1989). Optimal brain damage. In D. Touretzky (Ed.), Advances in Neural Information Processing Systems (Vol. 2, pp. ). Morgan-Kaufmann. https://proceedings.neurips.cc/paper_files/paper/1989/file/6c9882bbac1c7093bd25041881277658-Paper.pdf
 11. Hassibi, B., & Stork, D. (1992). Second order derivatives for network pruning: Optimal Brain Surgeon. In S. Hanson, J. Cowan, & C. Giles (Eds.), Advances in Neural Information Processing Systems (Vol. 5, pp. ). Morgan-Kaufmann. https://proceedings.neurips.cc/paper_files/paper/1992/file/303ed4c69846ab36c2904d3ba8573050-Paper.pdf
+12. Frankle, J., & Carbin, M. (2019). The lottery ticket hypothesis: Finding sparse, trainable neural networks (arXiv:1803.03635 [cs.LG]). arXiv. https://arxiv.org/abs/1803.03635
 
 # Tags
 
