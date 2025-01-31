@@ -4,9 +4,9 @@ aliases:
 ---
 # Introduction
 
-The  pursuit of accuracy in modern AI, particularly with the advent of Large Language Models (LLMs) and vision transformers, has led us down a path of ever-increasing model scale. Branwen (2020)<sup>1</sup>, also called as the scaling hypothesis, often cited as justification, posits that larger models, trained on more data, exhibit improved performance. And indeed, empirical evidence largely supports this – up to a point. However, this scaling comes at a steep cost, most acutely felt in memory and energy consumption.
+The  pursuit of accuracy in modern AI, particularly with the advent of Large Language Models (LLMs) and vision transformers, has led us down a path of ever-increasing model scale. Branwen (2020)<sup>1</sup>, often cited as justification, posits that larger models, trained on more data, exhibit improved performance. And indeed, empirical evidence largely supports this – up to a point. However, this scaling comes at a steep cost, most acutely felt in memory and energy consumption.
 
-As models balloon in parameter count, so too does their memory footprint. Storing these massive models on disk is one challenge, but the real bottleneck emerges during inference and training. GPU memory, while expanding, has not kept pace with parameter proliferation. This requires constant data movement between High Bandwidth Memory (HBM) and on-chip SRAM, a process notoriously power-hungry. Horowitz (2014)<sup>2</sup> highlights this: energy expenditure for data movement can dwarf that of computation itself, especially across memory hierarchies. This "memory wall" (or perhaps, more accurately, "memory power draw") threatens to make continued scaling economically and environmentally unsustainable.
+As models balloon in parameter count, so too does their memory footprint. Storing these massive models on disk is one challenge, but the real bottleneck emerges during inference and training. GPU memory, while expanding, has not kept pace with parameter proliferation. This requires constant data movement between High Bandwidth Memory (HBM) and on-chip SRAM, a process notoriously power-hungry. Horowitz (2014)<sup>1</sup> highlights this: energy expenditure for data movement can dwarf that of computation itself, especially across memory hierarchies. This "memory wall" (or perhaps, more accurately, "memory power draw") threatens to make continued scaling economically and environmentally unsustainable.
 
 ![[../images/efficiency/2_pruning/1_memory_power_consumption.png]]
 
@@ -106,7 +106,7 @@ The intuition is that weights with smaller absolute values contribute less to th
 
 ### Element-wise Pruning
 
- The simplest form, where individual weights below a threshold are zeroed out.
+The simplest form, where individual weights below a threshold are zeroed out.
 
 ![[../images/efficiency/2_pruning/8_element_pruning.png]]
 <sub>(Image from 2)</sub>
@@ -117,6 +117,7 @@ The intuition is that weights with smaller absolute values contribute less to th
 For structured pruning (e.g., row, column, kernel), norms can be used to assess the "importance" of entire structures. Common norms include $l_1$, $l_2$, and generalized $l_p$ norms.
 
 #### $l_1$-norm
+
 Importance is calculated as the sum of absolute values within a structural unit (eg: a row):
 
 $$\text{Importance} = \sum_{i \in S} | w_i | $$
@@ -137,7 +138,7 @@ While magnitude-based pruning is widely used due to its simplicity, it's not nec
 
 **Gradient-based Pruning**
 
-Weights with small gradients during training are considered less important. This directly relates to the weight's contribution to loss reduction. Techniques like Optimal Brain Damage (LeCun et al., 1990 [unreferenced in original blog, but classic]) and Optimal Brain Surgeon (Hassibi et al., 1993 [unreferenced, also classic]) fall into this category, though they can be computationally expensive for large networks.
+Weights with small gradients during training are considered less important. This directly relates to the weight's contribution to loss reduction. Techniques like Optimal Brain Damage (LeCun et al., 1990<sup>10</sup>) and Optimal Brain Surgeon (Hassibi et al., 1993<sup>11</sup>) fall into this category, though they can be computationally expensive for large networks.
 
 **Connection Sensitivity**
 
@@ -224,6 +225,8 @@ This exploration of AI efficiency, with a focus on pruning and sparsity, is heav
 7. Accelerating Inference with Sparsity Using the NVIDIA Ampere Architecture and NVIDIA TensorRT. https://developer.nvidia.com/blog/accelerating-inference-with-sparsity-using-ampere-and-tensorrt/
 8. Dr. Song Han's course on TinyML and Efficient Deep Learning Computing. https://hanlab.mit.edu/courses/2024-fall-65940
 9. Branwen, G. (2020). The Scaling Hypothesis. https://gwern.net/scaling-hypothesis
+10. LeCun, Y., Denker, J., & Solla, S. (1989). Optimal brain damage. In D. Touretzky (Ed.), Advances in Neural Information Processing Systems (Vol. 2, pp. ). Morgan-Kaufmann. https://proceedings.neurips.cc/paper_files/paper/1989/file/6c9882bbac1c7093bd25041881277658-Paper.pdf
+11. Hassibi, B., & Stork, D. (1992). Second order derivatives for network pruning: Optimal Brain Surgeon. In S. Hanson, J. Cowan, & C. Giles (Eds.), Advances in Neural Information Processing Systems (Vol. 5, pp. ). Morgan-Kaufmann. https://proceedings.neurips.cc/paper_files/paper/1992/file/303ed4c69846ab36c2904d3ba8573050-Paper.pdf
 
 # Tags
 
