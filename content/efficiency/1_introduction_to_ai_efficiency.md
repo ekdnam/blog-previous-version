@@ -17,7 +17,7 @@ In large language models (LLMs), the [scaling hypothesis](https://gwern.net/scal
 
 This drives the worldwide LLM arms race, catapults NVIDIA’s valuation, and influences how many billions of parameters “Llama” releases (7B, 14B, 70B, 405B, etc.). I will explore the why and how of this in subsequent posts.
 
-![[./images/efficiency/1_introduction/scaling-hypothesis.png]]
+![[../images/efficiency/1_introduction/scaling-hypothesis.png]]
 
 Consider a model with \(N\) parameters trained on a dataset of size \(D\), requiring compute \(C\). Scaling them all up in tandem decreases test loss. In practice, we can sometimes predict performance given partial knowledge of \(N\), \(D\), or \(C\). Researchers exploit this to calibrate how large a model to train if you have limited GPU capacity, or to estimate final performance if you push \(N\) as high as your hardware budget allows.
 
@@ -84,7 +84,7 @@ Alongside hardware improvements, software frameworks like PyTorch, TensorFlow, a
 
 Let’s briefly consider the new NVIDIA H200 ([datasheet](https://nvdam.widen.net/s/nb5zzzsjdf/hpc-datasheet-sc23-h200-datasheet-3002446)).
 
-![[./images/efficiency/1_introduction/H200-datasheet.png]]
+![[../images/efficiency/1_introduction/H200-datasheet.png]]
 
 ## Compute
 
