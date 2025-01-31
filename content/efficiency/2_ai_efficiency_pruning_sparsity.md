@@ -1,154 +1,230 @@
 ---
 title: "AI Efficiency II: Pruning and Sparsity"
+aliases:
 ---
 # Introduction
 
-Our AI models are getting very big these days, going back to the scaling hypothesis. As models get bigger their accuracy on tasks keeps increasing, which is a good thing. However, the bigger the model, it also leads to a larger memory footprint to store a model on disk. However, the rate of increase in GPU memory has not kept up with the scale up in number of parameters. Also, memory movement is pretty power hungry.<sup>1</sup> Leading to how power consumption if we have to continuously move parameters from HBM to SRAM and vice-a-versa. 
+The  pursuit of accuracy in modern AI, particularly with the advent of Large Language Models (LLMs) and vision transformers, has led us down a path of ever-increasing model scale. Branwen (2020)<sup>1</sup>, also called as the scaling hypothesis, often cited as justification, posits that larger models, trained on more data, exhibit improved performance. And indeed, empirical evidence largely supports this – up to a point. However, this scaling comes at a steep cost, most acutely felt in memory and energy consumption.
+
+As models balloon in parameter count, so too does their memory footprint. Storing these massive models on disk is one challenge, but the real bottleneck emerges during inference and training. GPU memory, while expanding, has not kept pace with parameter proliferation. This requires constant data movement between High Bandwidth Memory (HBM) and on-chip SRAM, a process notoriously power-hungry. Horowitz (2014)<sup>2</sup> highlights this: energy expenditure for data movement can dwarf that of computation itself, especially across memory hierarchies. This "memory wall" (or perhaps, more accurately, "memory power draw") threatens to make continued scaling economically and environmentally unsustainable.
 
 ![[../images/efficiency/2_pruning/1_memory_power_consumption.png]]
 
 <sub>(Image from 2)</sub>
 
-Thus, we would like to explore methods by which we can reduce either the number of parameters, or store the parameters in a different format, both while trying to maintain the accuracy. The first is called pruning while the latter is called quantization. In this blog we will be covering pruning.
+Thus, the imperative for efficiency becomes very important. We must explore techniques to mitigate the resource demands of these gargantuan models without sacrificing, or ideally even improving, performance. Two primary avenues present themselves: pruning and quantization. Pruning focuses on reducing the number of parameters, aiming to induce sparsity – a state where a significant proportion of model weights are zero. Quantization, conversely, reduces the precision of the remaining parameters, shrinking their storage footprint. This post will focus on the former: pruning and sparsity in neural networks.
 
-# What is neural network pruning?
+# Pruning
 
-We can formulate pruning as 
-$$\mathop{\arg\min}_{W_p} \space L(X; W_p) $$
-subject to 
-$$\| \mathbf{W_p} \|_{0} < N$$
-- $L$ is the objective function for neural network training
-- $\mathbf{x}$ is input, $\mathbf{W}$ is the original weights, $\mathbf{W_p}$ is the pruned weights.
-- $\| \mathbf{W_p} \|_{0} \space$ is the number of nonzero parameters in the network, $N$ is our target number of nonzero parameters.
+Neural network pruning, at its core, is about selective weight removal. Formally, we can frame it as a constrained optimization problem:
 
-Thus we want to have the minimum loss with our pruned weights (non zero weights) with the number of nonzero params being below a certain threshold. Thus we can observe we want to make the network more **sparse** or just remove weights.
+$$\mathop{\arg\min}_{W_p} \space L(X; W_p) \quad \text{subject to} \quad \|W_p\|_0 < N$$
 
-# How to prune?
+Where:
+- $L$ is the loss function guiding network training.
+- $\mathbf{x}$ represents the input data.
+- $\mathbf{W}$ is the original, dense weight matrix.
+- $\mathbf{W_p}$ denotes the pruned weight matrix.
+- $\|\mathbf{W_p}\|_0$ is the $\ell_0$ "norm," counting the number of non-zero parameters in $\mathbf{W_p}$.
+- $N$ is our target sparsity level - the maximum allowed non-zero weights.
 
-We can prune a neural network either by pruning neurons, or pruning synapses.
+# Pruning Strategies: Neurons vs. Synapses & Granularity
 
-**Neuron pruning** means removing entire neurons if they don't contribute much to the network's function. This could mean fewer layers (depth pruning) or fewer neurons per layer (width pruning), making the network simpler and faster. The idea is that some neurons might be redundant, so removing them keeps performance while reducing complexity.
+Pruning can be broadly categorized by the granularity at which weights are removed. We can prune at the level of individual synapses (connections) or entire neurons (nodes).
 
-**Synapse pruning** involves cutting connections between neurons with very low weights, assuming they don't significantly affect the output. This makes the network sparser, potentially improving speed and reducing overfitting by making the model less complex.
-Both methods aim for efficiency, but they affect how the network processes information differently. Neuron pruning might change the network's structure more dramatically, while synapse pruning tweaks the existing connections.
+**Neuron Pruning**: This involves eliminating entire neurons, either within a layer (width pruning) or by removing layers altogether (depth pruning). The rationale is that some neurons may be redundant or contribute negligibly to the network's overall function. Removing them simplifies the network architecture, potentially leading to faster inference and reduced memory usage. However, neuron pruning can be a more coarse-grained approach, potentially leading to larger accuracy drops if not performed judiciously.
+
+**Synapse Pruning**: Synapse pruning, conversely, targets individual connections (weights) between neurons. Weights with magnitudes below a certain threshold are set to zero. This induces sparsity at a finer granularity, potentially preserving more of the network's representational capacity compared to aggressive neuron pruning. Synapse pruning can lead to unstructured sparsity (individual weights zeroed out) or structured sparsity (patterns of zeros enforced, as discussed later).
+
 ![[../images/efficiency/2_pruning/2_pruning_neurons_synapses.png]]
 
-<sub>(Image from 4)</sub>
+<sub>(Image from 3)</sub>
 
-One of the reasons we don't want to keep on trivially keep on removing neurons is because of its impact on accuracy. _4_ talks more about this. 
+Han et al. (2015)<sup>3</sup> demonstrated the effectiveness of iterative magnitude pruning. They trained a baseline network (AlexNet), then pruned small-magnitude weights, and crucially, fine-tuned the remaining weights. This iterative prune-and-fine-tune cycle proved highly effective.
 
 ![[../images/efficiency/2_pruning/3_prune_and_finetune.png]]
 
-<sub>(Image from 2)</sub>
+<sub>(Image from 2, based on 3)</sub>
 
-_4_ first trains a baseline network (AlexNet). 
+As the figure illustrates, naive pruning (simply removing weights without retraining) leads to accuracy degradation proportional to the pruning ratio. However, by fine-tuning after each pruning step, the network recovers remarkably well. <sup>3</sup> showed that AlexNet could be pruned by ~80% with minimal accuracy loss, and iterative pruning could push this to ~90% sparsity. The key insight here is that fine-tuning allows the network to redistribute importance among the remaining connections, compensating for the pruned ones.
 
-**Pruning**: They then gradually prune the network, by removing weights whose absolute value is near to zero, under a threshold. As we see, the more we prune, the more the loss in accuracy (pruning). 
+# Granularities of Pruning
 
-**Pruning + Finetuning**: If we train the remaining weights that survive the pruning, we can prune more, leading to higher accuracy given same pruning ratio. The weight distribution becomes smoother as well. We can prune away ~80% of the weights without hurting the accuracy.
+Beyond neuron vs. synapse, pruning can be further categorized by granularity, particularly relevant in Convolutional Neural Networks (CNNs). CNNs, with their kernel-based operations, offer various structural levels for pruning:
 
-**Iterative Pruning and Finetuning**: We can do an another round of pruning and finetuning, doing it iteratively, and get to about ~90% pruning without hurting the accuracy.
+**Fine-grained (Element-wise) Pruning**: Individual weights within kernels or weight matrices are pruned based on some criterion (e.g., magnitude). Offers the highest flexibility and potential compression ratio, but often results in unstructured sparsity, which is less hardware-friendly on standard GPUs.
 
-# Pruning in the industry
+**Pattern-based (N:M) Pruning**: Enforces structured sparsity by requiring specific patterns of zeros within weight blocks (e.g., 2:4 sparsity, where in every block of 4 consecutive values, at least 2 must be zero). This is specifically designed to leverage hardware acceleration, such as NVIDIA's sparse tensor cores, but may limit achievable sparsity compared to fine-grained pruning.
 
-NVIDIA<sup>5</sup> has introduced structured sparsity in its hardware, starting from the Ampere architecture. With the third generation Tensor Cores in A100s, we can take advantage of sparsity to 2x the max throughput while maintaining the accuracy of the MACs (Matrix Multiply Accumulate).
+**Vector-based (Row/Column) Pruning**: Prunes entire rows or columns in weight matrices, effectively removing neurons or filters. Strikes a balance between granularity and structure.
 
-![[../images/efficiency/2_pruning/4_nvidia_sparsity_diagram.jpg]]
+**Kernel-based Pruning**: Removes entire kernels in convolutional layers. More aggressive than vector pruning, leading to simpler filters and reduced computation.
 
-<sub>(Image from 6)</sub>
-
-
-## Structured sparsity
-
-![[../images/efficiency/2_pruning/5_structured_sparsity_pattern.png]]
-
-<sub>(Image from 5)</sub>
-
-NVIDIA Ampere and Hopper architectures GPUs add fine-grained structured sparsity, taking advantage of sparse Tensor Cores, which require a 2:4 sparsity pattern. This means that among a group of 4 contiguous values, atleast 2 must be zero, leading to a 50% sparsity rate. We can extend this to N:M sparsity, where in a group of M contiguous values, N should be zero. After compression, only non-zero values and the associated metadata gets stored. This can be primarily applied to fully connected layers or convolutional layers. 
-
-Sparse Tensor Cores accelerate this format by operating only on the nonzero values in the compressed matrix. They use the metadata that is stored with the nonzeros to pull only the necessary values from the other, uncompressed operand. So, for a sparsity of 2x, they can complete the same effective calculation in half the time.<sup>7</sup>
- ![[../images/efficiency/2_pruning/7_dense_sparse_matrix_nvidia.png]]
-
-<sub>(Image from 8)</sub>
-
-Lets consider a GEMM (Generalized Matrix Multiply),where we multiply sparse $A \in \mathbb{R}^{M \times K}$ (which has 2:4 sparsity) with a dense $B \in \mathbb{R}^{K \times N}$. This works on the sparse tensor core by converting the GEMM  from dense to sparse. $A$ is converted from $M \space \text{x} \space K$ to $M \space \text{x} \space \frac{K}{2}$ after since its 50% sparse. The tensor core selects only the values from $B$ that correspond to the nonzero values in $A$, skipping unnecessary multiplications by 0.<sup>8</sup>
-
-Sparsity motivates engineers and scientists to prune their networks to make use of this speedup.
-
-
-# Pruning at different granularities
+**Channel-based Pruning**: Specifically for CNNs, removes entire channels (feature maps). This is often considered more structurally sound for CNNs as channels represent distinct features. Channel pruning can be seen as a form of neuron pruning at the feature map level.
 
 ![[../images/efficiency/2_pruning/6_pruning_granularities.png]]
 
 <sub>(Image from 2)</sub>
 
-We consider the case of convoulutional neural networks, which have kernels. Kernels in CNNs extract features from input images by applying convolution operations, detecting patterns like edges or textures.
+The choice of pruning granularity involves trade-offs between compression ratio, hardware acceleration potential, and implementation complexity. Fine-grained pruning offers maximum flexibility but may not directly map to hardware speedups without specialized sparse compute units. Structured pruning, particularly pattern-based sparsity, is explicitly designed for hardware acceleration but might constrain the achievable sparsity level and require careful implementation.
 
-## Fine-grained pruning
-- We select "redundant" neurons based on some heuristic (discussed later).
-- Since its flexible, leads to higher compression ratio.
-- However, flexibility means we can't make use of structured sparsity on GPUs trivially.
-## Pattern-based pruning
-- This is essentially N:M sparsity, discussed [before](#structured-sparsity).
-- 2:4 works great on NVIDIA GPUs.
-## Vector-based pruning
-- We make entire rows sparse in a kernel ie we remove neurons.
-## Kernel-based pruning
-- We make entire kernels sparse.
-## Channel-based pruning
-- Specifically targets the channels of convolutional layers in CNNs. 
-- Each channel in a convolutional layer corresponds to a feature map, and pruning involves removing entire channels rather than individual weights or kernels.
+# Pruning in Industry: NVIDIA's Structured Sparsity
 
-# Pruning Criterion
+NVIDIA's Ampere and Hopper architectures [<sup>5</sup>, <sup>6</sup>] have brought structured sparsity to the forefront of hardware-accelerated AI inference. Their Tensor Cores, starting from the Ampere generation, leverage 2:4 structured sparsity to achieve up to 2x throughput gains while maintaining accuracy for matrix multiplications.
 
-If we remove the less important neurons and synapses, the accuracy of the neural network is higher. How to decide which neuron is less important?
-<sub>(All the images in this section are from 2)</sub>
+![[../images/efficiency/2_pruning/4_nvidia_sparsity_diagram.jpg]]
 
-## Magnitude-based pruning
+<sub>(Image from 4)</sub>
 
-We consider weights with higher absolute values to be more important. 
+## Structured Sparsity: 2:4 Pattern
 
-### Element-wise pruning
+![[../images/efficiency/2_pruning/5_structured_sparsity_pattern.png]]
 
-We zero out elements of the matrix whose value is below a certain threshold.
+<sub>(Image from 5)</sub>
+
+NVIDIA's sparse Tensor Cores are optimized for 2:4 sparsity. This requires that within every group of four contiguous values in a weight tensor, at least two must be zero. This enforces a 50% sparsity rate. The concept generalizes to N:M sparsity, where in a block of M values, N must be zero. During storage, only the non-zero values and associated metadata (indices indicating their original positions) are kept, leading to compression. This is primarily applicable to fully connected and convolutional layers.
+
+The performance gain arises because Sparse Tensor Cores operate only on the non-zero values. The metadata guides the hardware to fetch only the necessary corresponding values from the dense operand in a matrix multiplication, effectively skipping computations involving zeros <sup>6</sup>. For 2x sparsity, this can, ideally, halve the computation time for matrix multiplications, a core operation in deep learning.
+
+![[../images/efficiency/2_pruning/7_dense_sparse_matrix_nvidia.png]]
+
+<sub>(Image from 7)</sub>
+
+Consider a GEMM (Generalized Matrix Multiply) operation: $C = A \times B$, where $A \in \mathbb{R}^{M \times K}$ is sparse (2:4 structured sparsity), and $B \in \mathbb{R}^{K \times N}$ is dense. Sparse Tensor Cores accelerate this by effectively transforming the dense GEMM into a sparse one. While the logical dimensions of $A$ remain $M \times K$, its compressed representation and the sparse hardware allow computation only on the non-zero elements of $A$ and the corresponding rows of $B$. This hardware-level optimization is a significant driver for adopting structured sparsity in practical deployments.
+
+However, it's crucial to note that the theoretical 2x speedup is often not fully realized in practice due to overheads like metadata processing and memory access patterns. Empirical benchmarks are essential to quantify the actual gains in specific use cases.
+
+This hardware-level optimization is a significant driver for adopting structured sparsity in practical deployments. However, it's crucial to note that the theoretical 2x speedup is often not fully realized in practice due to overheads like metadata processing and memory access patterns. Empirical benchmarks are essential to quantify the actual gains in specific use cases.
+
+# Pruning Criteria
+
+The efficacy of pruning relias on identifying and removing "unimportant" weights. Various criteria exist to assess weight importance. Magnitude-based pruning is a common and straightforward approach.
+
+## Magnitude-Based Pruning
+
+The intuition is that weights with smaller absolute values contribute less to the network's output and can be pruned.
+
+### Element-wise Pruning
+
+ The simplest form, where individual weights below a threshold are zeroed out.
 
 ![[../images/efficiency/2_pruning/8_element_pruning.png]]
-### Row-based pruning
+<sub>(Image from 2)</sub>
 
-We can use three heuristics: $l1$, $l2$, or the generalized $l_p$ norm
+### Structural Pruning with Norms
 
-#### L1-norm
 
-We calculate $\text{Importance} = \sum_{i \in S} | w_i |$ where $\mathbf{W}^{s}$ is the structural set of parameters in $\mathbf{W}$
+For structured pruning (e.g., row, column, kernel), norms can be used to assess the "importance" of entire structures. Common norms include $l_1$, $l_2$, and generalized $l_p$ norms.
+
+#### $l_1$-norm
+Importance is calculated as the sum of absolute values within a structural unit (eg: a row):
+
+$$\text{Importance} = \sum_{i \in S} | w_i | $$
+
+where $S$ is the set of indices in the structural units.
 
 ![[../images/efficiency/2_pruning/9_row_based_pruning_l1.png]]
+<sub>(Image from 2)</sub>
 
-#### L2-norm
-
-$\text{Importance} = \sqrt {\sum_{i \in S}  w_{i}^2 }$ 
 ![[../images/efficiency/2_pruning/10_row_based_pruning_l2.png]]
+<sub>(Image from 2)</sub>
 
-#### $L_p$-norm
+# Beyond Magnitude
 
-$\text{Importance} = ({\sum_{i \in S}  (| w_{i} |)^p)^{\frac{1}{p}} }$ 
+## More Sophisticated Criteria
 
+While magnitude-based pruning is widely used due to its simplicity, it's not necessarily the most effective criterion. More advanced methods consider:
 
+**Gradient-based Pruning**
+
+Weights with small gradients during training are considered less important. This directly relates to the weight's contribution to loss reduction. Techniques like Optimal Brain Damage (LeCun et al., 1990 [unreferenced in original blog, but classic]) and Optimal Brain Surgeon (Hassibi et al., 1993 [unreferenced, also classic]) fall into this category, though they can be computationally expensive for large networks.
+
+**Connection Sensitivity**
+
+Methods that attempt to directly estimate the impact of removing a connection on the network's output. This can involve approximating the Hessian of the loss function (second-order information) to assess sensitivity. Again, computationally demanding but potentially more accurate.
+
+**Data-Driven/Activation-Based Pruning**
+
+Pruning decisions based on the actual activations observed during inference on a dataset. For instance, neurons or channels with consistently low activations might be deemed less important and pruned.
+
+# Pruning Schedules and Strategies:
+
+**One-Shot Pruning**
+
+Prune the network once, based on a chosen criterion and sparsity target, then fine-tune the remaining weights. Simple but may be suboptimal for high sparsity levels.
+
+**Iterative Pruning**
+
+Repeated cycles of pruning and fine-tuning. As demonstrated by Han et al. 3, this often yields better results, allowing the network to adapt to sparsity more effectively. Schedules can be fixed (prune by X% every Y epochs) or adaptive.
+
+**Pruning During Training**
+
+Integrate pruning directly into the training process. Regularization terms can be added to the loss function to encourage sparsity during training itself. Less common than post-training pruning but an active research area.
+
+**Dynamic Sparsity**
+
+Sparsity patterns are not fixed but change during training or even during inference. This adds complexity but could potentially offer greater flexibility and efficiency.
+
+# Practical Considerations & Open Questions
+
+While pruning offers a promising route to AI efficiency, several practical aspects and open research questions remain:
+
+**Software Tools and Libraries**
+
+Frameworks like PyTorch and TensorFlow provide built-in modules and libraries to facilitate pruning. NVIDIA TensorRT 4 is crucial for deploying sparse models on NVIDIA hardware, optimizing for sparse tensor core utilization. However, tooling is still evolving, and seamless integration of complex pruning strategies can be challenging.
+
+**Hyperparameter Tuning for Pruning**
+
+Pruning introduces new hyperparameters: sparsity level, pruning schedule, fine-tuning epochs, pruning criterion thresholds, etc. Tuning these effectively can be non-trivial and often requires experimentation. Automated pruning hyperparameter search is an area of active research.
+
+**Model Architectures and Pruning Sensitivity**
+
+Different network architectures exhibit varying degrees of prune-friendliness. Some architectures are inherently more robust to pruning than others. Understanding architectural biases towards sparsity is crucial for effective pruning. Transformers, for instance, may respond differently to pruning compared to CNNs.
+
+**Impact on Training Time**
+
+While the goal is to reduce inference time, the pruning process itself (especially iterative pruning with fine-tuning) can add to the overall training time. Careful scheduling and efficient implementation are needed to mitigate this.
+
+**Quantization and Pruning Synergy**
+
+Pruning and quantization are often used in tandem. Applying quantization to already sparse models can further compress them and improve inference efficiency. Exploring the optimal combination and ordering of these techniques is an ongoing area of investigation.
+
+**Pruning Large Language Models (LLMs)**
+
+Pruning LLMs presents unique challenges due to their scale and the sensitivity of their performance to even small perturbations. Maintaining perplexity and generation quality after pruning is paramount. Techniques like attention head pruning, layer pruning, and specialized sparse training methods are actively being explored for LLMs.
+
+**Lottery Ticket Hypothesis**
+
+The Lottery Ticket Hypothesis (Frankle & Carbin, 2018 [unreferenced, but important]) posits that within a randomly initialized dense network, there exists a sparse subnetwork ("winning ticket") that can be trained in isolation to achieve comparable or even better performance than the original dense network. This suggests that sparsity is not just about compression but might be fundamental to efficient learning itself. Exploring lottery tickets and related sparse initialization strategies is a promising research direction.
+
+**Evaluation Metrics Beyond Accuracy**
+
+While accuracy preservation is crucial, evaluating pruned models should also consider compression ratio (sparsity level), inference speedup (latency reduction), and energy efficiency gains. Benchmarking across these metrics provides a more holistic picture of pruning effectiveness.
+
+# Future Directions
+
+Research continues to push the boundaries of pruning. Areas of focus include developing more robust and automated pruning criteria, exploring dynamic sparsity, designing hardware-aware pruning algorithms, and understanding the theoretical underpinnings of sparsity in deep learning.
+
+# Conclusion: Sparse Futures
+
+Pruning and sparsity offer a critical pathway to reconcile the insatiable demands of modern AI with the constraints of computational resources and energy efficiency. While challenges remain in terms of tooling, hyperparameter optimization, and achieving consistent and predictable performance gains, the potential benefits are undeniable. As hardware support for sparsity matures and research deepens our understanding of sparse neural networks, pruning is poised to become an indispensable technique in the toolkit of any AI practitioner aiming for both performance and sustainability. The pursuit of sparsity is not just about making models smaller; it's about sculpting more efficient and elegant intelligence.
 
 # Acknowledgements
-This series of blogs on AI efficiency is heavily inspired by [Dr. Song Han's](https://hanlab.mit.edu/songhan) course on [TinyML and Efficient Deep Learning Computing](https://hanlab.mit.edu/courses/2024-fall-65940). For the papers we discussed, I referred [horseee/Awesome-Efficient-LLM](https://github.com/horseee/Awesome-Efficient-LLM) on Github.
 
-I used the help from my buddies (sorry for anthromorphizing) [Grok-2](https://x.ai/blog/grok-1212), [OpenAI O1](https://openai.com/o1/), [gemini-2.0-flash-thinking-exp-01-21](https://deepmind.google/technologies/gemini/flash-thinking/) for this post. 
+This exploration of AI efficiency, with a focus on pruning and sparsity, is heavily indebted to Dr. Song Han's course on TinyML and Efficient Deep Learning Computing. The references cited and the broader field of efficient deep learning are built upon the work of numerous researchers and engineers.
 
 # References
-1. [Computing’s Energy Problem (and what we can do about it)](https://gwern.net/doc/cs/hardware/2014-horowitz-2.pdf)
-2. [EfficientML.ai Lecture 3 - Pruning and Sparsity Part I (MIT 6.5940, Fall 2024)](https://www.youtube.com/watch?v=EjsB0WgIfUM)
-3. [horseee/Awesome-Efficient-LLM](https://github.com/horseee/Awesome-Efficient-LLM)
-4. [Learning both Weights and Connections for Efficient Neural Networks](https://arxiv.org/abs/1506.02626)
-5. [Structured Sparsity in the NVIDIA Ampere Architecture and Applications in Search Engines](https://developer.nvidia.com/blog/structured-sparsity-in-the-nvidia-ampere-architecture-and-applications-in-search-engines/)
-6. [How Sparsity Adds Umph to AI Inference](https://blogs.nvidia.com/blog/sparsity-ai-inference/)
-7. [Accelerating Inference with Sparsity Using the NVIDIA Ampere Architecture and NVIDIA TensorRT](https://developer.nvidia.com/blog/accelerating-inference-with-sparsity-using-ampere-and-tensorrt/)
-8. [Accelerating Sparse Deep Neural Networks](https://arxiv.org/abs/2104.08378)
-
+ 
+1. M. Horowitz, "1.1 Computing's energy problem (and what we can do about it)," 2014 IEEE International Solid-State Circuits Conference Digest of Technical Papers (ISSCC), San Francisco, CA, USA, 2014, pp. 10-14, doi: 10.1109/ISSCC.2014.6757323. https://ieeexplore.ieee.org/document/6757323
+2. EfficientML.ai Lecture 3 - Pruning and Sparsity Part I (MIT 6.5940, Fall 2024). https://www.youtube.com/watch?v=EjsB0WgIfUM
+3. Han, S., Mao, H., & Dally, W. J. (2015). Learning both Weights and Connections for Efficient Neural Networks. Advances in Neural Information Processing Systems, 28. https://arxiv.org/abs/1506.02626
+4. Accelerating Inference with Sparsity Using the NVIDIA Ampere Architecture and NVIDIA TensorRT. https://developer.nvidia.com/blog/accelerating-inference-with-sparsity-using-ampere-and-tensorrt/
+5. How Sparsity Adds Umph to AI Inference. https://blogs.nvidia.com/blog/sparsity-ai-inference/
+6. Mishra, A., Albericio Latorre, J., Pool, J., Stosic, D., Stosic, D., Venkatesh, G., Yu, C., & Micikevicius, P. (2021). *Accelerating sparse deep neural networks* (arXiv:2104.08378 [cs.LG]). arXiv. https://arxiv.org/abs/2104.08378
+7. Accelerating Inference with Sparsity Using the NVIDIA Ampere Architecture and NVIDIA TensorRT. https://developer.nvidia.com/blog/accelerating-inference-with-sparsity-using-ampere-and-tensorrt/
+8. Dr. Song Han's course on TinyML and Efficient Deep Learning Computing. https://hanlab.mit.edu/courses/2024-fall-65940
+9. Branwen, G. (2020). The Scaling Hypothesis. https://gwern.net/scaling-hypothesis
 
 # Tags
-#efficiency #ai #gpu #nvidia
+
+#efficiency #ai #gpu #nvidia #sparsity #pruning #llm #hardware
