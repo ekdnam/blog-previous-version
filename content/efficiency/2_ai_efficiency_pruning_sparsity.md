@@ -4,7 +4,7 @@ aliases:
 ---
 # Introduction
 
-The  pursuit of accuracy in modern AI, particularly with the advent of Large Language Models (LLMs) and vision transformers, has led us down a path of ever-increasing model scale. Branwen (2020)<sup>1</sup>, often cited as justification, posits that larger models, trained on more data, exhibit improved performance. And indeed, empirical evidence largely supports this – up to a point. However, this scaling comes at a steep cost, most acutely felt in memory and energy consumption.
+The  pursuit of accuracy in modern AI, particularly with the advent of Large Language Models (LLMs) and vision transformers, has led us down a path of ever-increasing model scale. Branwen (2020)<sup>9</sup>, often cited as justification, posits that larger models, trained on more data, exhibit improved performance. And indeed, empirical evidence largely supports this – up to a point. However, this scaling comes at a steep cost, most acutely felt in memory and energy consumption.
 
 As models balloon in parameter count, so too does their memory footprint. Storing these massive models on disk is one challenge, but the real bottleneck emerges during inference and training. GPU memory, while expanding, has not kept pace with parameter proliferation. This requires constant data movement between High Bandwidth Memory (HBM) and on-chip SRAM, a process notoriously power-hungry. Horowitz (2014)<sup>1</sup> highlights this: energy expenditure for data movement can dwarf that of computation itself, especially across memory hierarchies. This "memory wall" (or perhaps, more accurately, "memory power draw") threatens to make continued scaling economically and environmentally unsustainable.
 
@@ -212,7 +212,7 @@ Pruning and sparsity offer a critical pathway to reconcile the insatiable demand
 
 # Acknowledgements
 
-This blog series on AI efficiency is heavily indebted to Dr. Song Han's course on TinyML and Efficient Deep Learning Computing. The references cited and the broader field of efficient deep learning are built upon the work of numerous researchers and engineers.
+This blog series on AI efficiency is heavily indebted to Dr. Song Han's course on TinyML and Efficient Deep Learning Computing<sup>8</sup>. The references cited and the broader field of efficient deep learning are built upon the work of numerous researchers and engineers.
 
 I would like to extend my sincere gratitude to my colleagues for their invaluable insights and assistance throughout this research: Grok-2.0 [(xAI)](https://x.ai/blog/grok-2),
 Gemini-2.0-Flash-Thinking-Exp-01-21 [(DeepMind)](https://deepmind.google/technologies/gemini/flash-thinking/), O1 [(OpenAI)](https://openai.com/o1/).
